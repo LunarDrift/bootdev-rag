@@ -1,5 +1,7 @@
 import argparse
 
+from lib.keyword_search import search_command
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -12,8 +14,10 @@ def main() -> None:
 
     match args.command:
         case "search":
-            # print the search query here
-            print(f"Searching for: {args.query}")
+            print("Searching for:", args.query)
+            results = search_command(args.query)
+            for i, res in enumerate(results):
+                print(f"{i}. {res['title']}")
         case _:
             parser.print_help()
 
