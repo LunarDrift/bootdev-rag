@@ -1,7 +1,55 @@
+import os
+import pickle
 import string
+from collections import defaultdict
+
 from nltk.stem import PorterStemmer
 
-from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies, STOPWORDS_PATH
+from .search_utils import (
+    CACHE_DIR,
+    DEFAULT_SEARCH_LIMIT,
+    STOPWORDS_PATH,
+    load_movies,
+)
+
+
+class InvertedIndex:
+    def __init__(self) -> None:
+        self.index = defaultdict(set)  # maps tokens -> sets of document ids
+        self.docmap: dict[int, dict] = {}  # maps document ids -> full document objects
+        self.index_path = os.path.join(CACHE_DIR, "index.pkl")
+        self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
+
+    def build(self):
+        movies = load_movies()
+        for movie in movies:
+            # Concatenate the title and description
+            self.__add_document(movie["id"], f"{movie['title']} {movie['description']}")
+            self.docmap[movie["id"]] = movie
+
+    def save(self):
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(self.index_path, "wb") as f:
+            pickle.dump(self.index, f)
+        with open(self.docmap_path, "wb") as f:
+            pickle.dump(self.docmap, f)
+
+    def get_documents(self, term: str) -> list[int]:
+        ids = self.index.get(term, set())
+        return sorted(list(ids))
+
+    def __add_document(self, doc_id: int, text: str) -> None:
+        tokens = tokenize_text(text)
+        for token in set(tokens):
+            self.index[token].add(doc_id)
+
+
+def build_command():
+    index = InvertedIndex()
+    index.build()
+    index.save()
+    docs = index.get_documents("merida")
+    print(f"First document for token 'merida' = {docs[0]}")
 
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
