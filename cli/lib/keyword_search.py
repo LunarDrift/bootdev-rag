@@ -1,5 +1,5 @@
 import string
-from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
+from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies, STOPWORDS_PATH
 
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
@@ -24,7 +24,7 @@ def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool
     return False
 
 
-def process_text(text: str) -> str:
+def preprocess_text(text: str) -> str:
     text = text.lower()
     # Remove punctuation
     text = text.translate(str.maketrans("", "", string.punctuation))
@@ -32,12 +32,25 @@ def process_text(text: str) -> str:
     return text
 
 
+def load_stopwords(file: str = STOPWORDS_PATH) -> list[str]:
+    with open(file, "r") as f:
+        return [preprocess_text(word) for word in f.read().splitlines()]
+
+
+STOPWORDS = load_stopwords()
+
+
 def tokenize_text(text: str) -> list[str]:
-    text = process_text(text)
+    text = preprocess_text(text)
     tokens = text.split()
     valid_tokens = []
     for token in tokens:
         if token:
             valid_tokens.append(token)
 
-    return valid_tokens
+    filtered_words = []
+    for word in valid_tokens:
+        if word not in STOPWORDS:
+            filtered_words.append(word)
+
+    return filtered_words
