@@ -1,7 +1,7 @@
 import os
 import pickle
 import string
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from nltk.stem import PorterStemmer
 
@@ -17,15 +17,17 @@ class InvertedIndex:
     def __init__(self) -> None:
         self.index = defaultdict(set)  # maps tokens -> sets of document ids
         self.docmap: dict[int, dict] = {}  # maps document ids -> full document objects
+        self.term_frequencies = defaultdict(Counter)  # maps document ids -> Counters
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
+        self.term_frequencies_path = os.path.join(CACHE_DIR, "term_frequencies.pkl")
 
     def build(self):
         movies = load_movies()
         for movie in movies:
+            self.docmap[movie["id"]] = movie
             # Concatenate the title and description
             self.__add_document(movie["id"], f"{movie['title']} {movie['description']}")
-            self.docmap[movie["id"]] = movie
 
     def save(self):
         os.makedirs(CACHE_DIR, exist_ok=True)
@@ -33,6 +35,8 @@ class InvertedIndex:
             pickle.dump(self.index, f)
         with open(self.docmap_path, "wb") as f:
             pickle.dump(self.docmap, f)
+        with open(self.term_frequencies_path, "wb") as f:
+            pickle.dump(self.term_frequencies, f)
 
     def load(self):
         try:
@@ -40,6 +44,8 @@ class InvertedIndex:
                 self.index = pickle.load(f)
             with open(self.docmap_path, "rb") as f:
                 self.docmap = pickle.load(f)
+            with open(self.term_frequencies_path, "rb") as f:
+                self.term_frequencies = pickle.load(f)
 
         except FileNotFoundError as e:
             print(f"Could not find file: {e}")
@@ -53,6 +59,11 @@ class InvertedIndex:
         tokens = tokenize_text(text)
         for token in set(tokens):
             self.index[token].add(doc_id)
+
+        self.term_frequencies[doc_id].update(tokens)
+
+    def get_term_frequencies(self, doc_id: int, term: str) -> int:
+        return self.term_frequencies[doc_id][term]
 
 
 def build_command():
@@ -127,3 +138,16 @@ def tokenize_text(text: str) -> list[str]:
         stemmed_words.append(stemmer.stem(word))
 
     return stemmed_words
+
+
+def tokenize_single_term(term: str) -> str:
+    tokens = tokenize_text(term)
+    if len(tokens) != 1:
+        raise ValueError("term must be a single token")
+    return tokens[0]
+
+
+def tf_command(doc_id: int, term: str) -> int:
+    index = InvertedIndex()
+    index.load()
+    return index.get_term_frequencies(doc_id, tokenize_single_term(term))
