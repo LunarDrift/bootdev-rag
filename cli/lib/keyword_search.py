@@ -1,3 +1,4 @@
+import math
 import os
 import pickle
 import string
@@ -151,3 +152,11 @@ def tf_command(doc_id: int, term: str) -> int:
     index = InvertedIndex()
     index.load()
     return index.get_term_frequencies(doc_id, tokenize_single_term(term))
+
+
+def idf_command(term: str) -> float:
+    index = InvertedIndex()
+    index.load()
+    token = tokenize_single_term(term)
+    idf = math.log((len(index.docmap) + 1) / (len(index.get_documents(token)) + 1))
+    return idf
