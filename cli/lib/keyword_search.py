@@ -63,8 +63,23 @@ class InvertedIndex:
 
         self.term_frequencies[doc_id].update(tokens)
 
-    def get_term_frequencies(self, doc_id: int, term: str) -> int:
+    def get_tf(self, doc_id: int, term: str) -> int:
         return self.term_frequencies[doc_id][term]
+
+    def get_idf(self, term: str) -> float:
+        """Calculate the Inverse Document Frequency of term.
+        IDF Formula: math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+        +1s are to prevent division-by-zero when term doesn't appear in any documents
+        """
+        doc_count = len(self.docmap)
+        term_doc_count = len(self.index[term])
+        return math.log((doc_count + 1) / (term_doc_count + 1))
+
+    def get_tf_idf(self, doc_id: int, term: str) -> float:
+        """TF-IDF = TF * IDF"""
+        tf = self.get_tf(doc_id, term)
+        idf = self.get_idf(term)
+        return tf * idf
 
 
 def build_command():
@@ -151,12 +166,17 @@ def tokenize_single_term(term: str) -> str:
 def tf_command(doc_id: int, term: str) -> int:
     index = InvertedIndex()
     index.load()
-    return index.get_term_frequencies(doc_id, tokenize_single_term(term))
+    return index.get_tf(doc_id, tokenize_single_term(term))
 
 
 def idf_command(term: str) -> float:
     index = InvertedIndex()
     index.load()
     token = tokenize_single_term(term)
-    idf = math.log((len(index.docmap) + 1) / (len(index.get_documents(token)) + 1))
-    return idf
+    return index.get_idf(token)
+
+
+def tfidf_command(doc_id: int, term: str) -> float:
+    index = InvertedIndex()
+    index.load()
+    return index.get_tf_idf(doc_id, term)
