@@ -7,6 +7,7 @@ from collections import defaultdict, Counter
 from nltk.stem import PorterStemmer
 
 from .search_utils import (
+    BM25_B,
     CACHE_DIR,
     DEFAULT_SEARCH_LIMIT,
     STOPWORDS_PATH,
@@ -20,9 +21,11 @@ class InvertedIndex:
         self.index = defaultdict(set)  # maps tokens -> sets of document ids
         self.docmap: dict[int, dict] = {}  # maps document ids -> full document objects
         self.term_frequencies = defaultdict(Counter)  # maps document ids -> Counters
+        self.doc_lengths: dict[int, int] = {}  # maps doc_ids -> token length
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
         self.term_frequencies_path = os.path.join(CACHE_DIR, "term_frequencies.pkl")
+        self.doc_lengths_path = os.path.join(CACHE_DIR, "doc_lengths.pkl")
 
     def build(self):
         movies = load_movies()
@@ -39,6 +42,8 @@ class InvertedIndex:
             pickle.dump(self.docmap, f)
         with open(self.term_frequencies_path, "wb") as f:
             pickle.dump(self.term_frequencies, f)
+        with open(self.doc_lengths_path, "wb") as f:
+            pickle.dump(self.doc_lengths, f)
 
     def load(self):
         try:
@@ -48,6 +53,8 @@ class InvertedIndex:
                 self.docmap = pickle.load(f)
             with open(self.term_frequencies_path, "rb") as f:
                 self.term_frequencies = pickle.load(f)
+            with open(self.doc_lengths_path, "rb") as f:
+                self.doc_lengths = pickle.load(f)
 
         except FileNotFoundError as e:
             print(f"Could not find file: {e}")
@@ -63,6 +70,15 @@ class InvertedIndex:
             self.index[token].add(doc_id)
 
         self.term_frequencies[doc_id].update(tokens)
+        self.doc_lengths[doc_id] = len(tokens)
+
+    def __get_avg_doc_length(self) -> float:
+        if not self.doc_lengths or len(self.doc_lengths) == 0:
+            return 0.0
+        running_total = 0
+        for length in self.doc_lengths.values():
+            running_total += length
+        return running_total / len(self.doc_lengths)
 
     def get_tf(self, doc_id: int, term: str) -> int:
         return self.term_frequencies[doc_id][term]
@@ -95,14 +111,23 @@ class InvertedIndex:
         df = len(self.get_documents(term))
         return math.log((N - df + 0.5) / (df + 0.5) + 1)
 
-    def get_bm25_tf(self, doc_id: int, term: str, k1=BM25_K1) -> float:
+    def get_bm25_tf(
+        self, doc_id: int, term: str, k1: float = BM25_K1, b: float = BM25_B
+    ) -> float:
         """
         Gets the BM25 TF for a given document and term.
-        BM25 saturation formula:
-        (tf * (k1 + 1)) / (tf + k1)
+        BM25 saturation formula w/ additional document length normalization:
+        length_norm = 1 - b + b * (doc_length / avg_doc_length)
+        (tf * (k1 + 1)) / (tf + k1 * length_norm)
         """
         tf = self.get_tf(doc_id, term)
-        return (tf * (k1 + 1)) / (tf + k1)
+        doc_length = self.doc_lengths.get(doc_id, 0)
+        avg_doc_length = self.__get_avg_doc_length()
+        if avg_doc_length > 0:
+            length_norm = 1 - b + b * (doc_length / avg_doc_length)
+        else:
+            length_norm = 1
+        return (tf * (k1 + 1)) / (tf + k1 * length_norm)
 
 
 def build_command():
@@ -211,7 +236,9 @@ def bm25_idf_command(term: str) -> float:
     return index.get_bm25_idf(tokenize_single_term(term))
 
 
-def bm25_tf_command(doc_id: int, term: str) -> float:
+def bm25_tf_command(
+    doc_id: int, term: str, k1: float = BM25_K1, b: float = BM25_B
+) -> float:
     index = InvertedIndex()
     index.load()
-    return index.get_bm25_tf(doc_id, tokenize_single_term(term))
+    return index.get_bm25_tf(doc_id, tokenize_single_term(term), k1, b)
