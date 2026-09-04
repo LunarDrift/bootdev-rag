@@ -10,6 +10,7 @@ from .search_utils import (
     CACHE_DIR,
     DEFAULT_SEARCH_LIMIT,
     STOPWORDS_PATH,
+    BM25_K1,
     load_movies,
 )
 
@@ -93,6 +94,15 @@ class InvertedIndex:
         N = len(self.docmap)
         df = len(self.get_documents(term))
         return math.log((N - df + 0.5) / (df + 0.5) + 1)
+
+    def get_bm25_tf(self, doc_id: int, term: str, k1=BM25_K1) -> float:
+        """
+        Gets the BM25 TF for a given document and term.
+        BM25 saturation formula:
+        (tf * (k1 + 1)) / (tf + k1)
+        """
+        tf = self.get_tf(doc_id, term)
+        return (tf * (k1 + 1)) / (tf + k1)
 
 
 def build_command():
@@ -199,3 +209,9 @@ def bm25_idf_command(term: str) -> float:
     index = InvertedIndex()
     index.load()
     return index.get_bm25_idf(tokenize_single_term(term))
+
+
+def bm25_tf_command(doc_id: int, term: str) -> float:
+    index = InvertedIndex()
+    index.load()
+    return index.get_bm25_tf(doc_id, tokenize_single_term(term))
