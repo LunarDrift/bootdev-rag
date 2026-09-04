@@ -81,6 +81,19 @@ class InvertedIndex:
         idf = self.get_idf(term)
         return tf * idf
 
+    def get_bm25_idf(self, term: str) -> float:
+        """
+        Gets the BM25 IDF for a given term - assuming term is a single token.
+        BM25 IDF Formula:
+        IDF = log((N - df + 0.5) / (df + 0.5) + 1)
+        Where:
+         - N = total number of documents
+         - df = document frequency
+        """
+        N = len(self.docmap)
+        df = len(self.get_documents(term))
+        return math.log((N - df + 0.5) / (df + 0.5) + 1)
+
 
 def build_command():
     index = InvertedIndex()
@@ -180,3 +193,9 @@ def tfidf_command(doc_id: int, term: str) -> float:
     index = InvertedIndex()
     index.load()
     return index.get_tf_idf(doc_id, term)
+
+
+def bm25_idf_command(term: str) -> float:
+    index = InvertedIndex()
+    index.load()
+    return index.get_bm25_idf(tokenize_single_term(term))
