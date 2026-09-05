@@ -8,19 +8,26 @@ from nltk.stem import PorterStemmer
 
 from .search_utils import (
     BM25_B,
+    BM25_K1,
     CACHE_DIR,
     DEFAULT_SEARCH_LIMIT,
     STOPWORDS_PATH,
-    BM25_K1,
+    Movie,
+    SearchResult,
+    format_search_result,
     load_movies,
 )
 
 
 class InvertedIndex:
     def __init__(self) -> None:
-        self.index = defaultdict(set)  # maps tokens -> sets of document ids
-        self.docmap: dict[int, dict] = {}  # maps document ids -> full document objects
-        self.term_frequencies = defaultdict(Counter)  # maps document ids -> Counters
+        self.index: defaultdict[str, set[int]] = defaultdict(
+            set
+        )  # maps tokens -> sets of document ids
+        self.docmap: dict[int, Movie] = {}  # maps document ids -> full document objects
+        self.term_frequencies: defaultdict[int, Counter[str]] = defaultdict(
+            Counter
+        )  # maps document ids -> Counters
         self.doc_lengths: dict[int, int] = {}  # maps doc_ids -> token length
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
@@ -128,6 +135,35 @@ class InvertedIndex:
         else:
             length_norm = 1
         return (tf * (k1 + 1)) / (tf + k1 * length_norm)
+
+    def bm25(self, doc_id: int, term: str) -> float:
+        bm25_tf = self.get_bm25_tf(doc_id, term)
+        bm25_idf = self.get_bm25_idf(term)
+        return bm25_tf * bm25_idf
+
+    def bm25_search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT):
+        query_tokens = tokenize_text(query)
+        scores: dict[int, float] = {}  # doc_ids -> bm25 scores
+
+        for doc_id in self.docmap:
+            score = 0.0
+            for token in query_tokens:
+                score += self.bm25(doc_id, token)
+            scores[doc_id] = score
+
+        sorted_docs = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+        results: list[SearchResult] = []
+        for doc_id, score in sorted_docs[:limit]:
+            doc = self.docmap[doc_id]
+            formatted_result = format_search_result(
+                doc_id=doc["id"],
+                title=doc["title"],
+                document=doc["description"],
+                score=score,
+            )
+            results.append(formatted_result)
+        return results
 
 
 def build_command():
@@ -242,3 +278,11 @@ def bm25_tf_command(
     index = InvertedIndex()
     index.load()
     return index.get_bm25_tf(doc_id, tokenize_single_term(term), k1, b)
+
+
+def bm25search_command(
+    query: str, limit: int = DEFAULT_SEARCH_LIMIT
+) -> list[SearchResult]:
+    index = InvertedIndex()
+    index.load()
+    return index.bm25_search(query, limit)
