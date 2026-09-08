@@ -149,6 +149,6 @@ def semantic_search(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> None:
     print()
 
     for i, result in enumerate(results, 1):
-        print(f"{i}. {result['title']} (score: {result['score']}:.4f")
+        print(f"{i}. {result['title']} (score: {result['score']:.4f})")
         print(f"   {result['description'][:100]}...")
         print()
