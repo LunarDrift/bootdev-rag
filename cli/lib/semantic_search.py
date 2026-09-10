@@ -49,7 +49,9 @@ class SemanticSearch:
         np.save(MOVIE_EMBEDDINGS_PATH, self.embeddings)
         return self.embeddings
 
-    def load_or_create_embeddings(self, documents: list[Movie]):
+    def load_or_create_embeddings(
+        self, documents: list[Movie]
+    ) -> EmbeddingArray | None:
         self.documents = documents
         self.document_map = {}
         for doc in documents:
@@ -120,7 +122,7 @@ def embed_text(text: str) -> None:
     print(f"Dimensions: {embedding.shape[0]}")
 
 
-def verify_embeddings():
+def verify_embeddings() -> None:
     search = SemanticSearch()
     movies = load_movies()
     embeddings = search.load_or_create_embeddings(movies)
@@ -130,7 +132,7 @@ def verify_embeddings():
     )
 
 
-def embed_query(query: str):
+def embed_query(query: str) -> None:
     search = SemanticSearch()
     embeddings = search.generate_embedding(query)
     print(f"Query: {query}")
