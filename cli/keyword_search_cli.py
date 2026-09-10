@@ -1,6 +1,5 @@
 import argparse
 
-from lib.search_utils import BM25_B, BM25_K1, DEFAULT_SEARCH_LIMIT
 from lib.keyword_search import (
     bm25_idf_command,
     bm25_tf_command,
@@ -11,6 +10,7 @@ from lib.keyword_search import (
     tf_command,
     tfidf_command,
 )
+from lib.search_utils import BM25_B, BM25_K1, DEFAULT_SEARCH_LIMIT
 
 
 def init_parsers(parser: argparse.ArgumentParser) -> argparse.Namespace:

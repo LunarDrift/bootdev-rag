@@ -2,15 +2,15 @@ import os
 from typing import Any, TypedDict
 
 import numpy as np
-from numpy.typing import NDArray
-from sentence_transformers import SentenceTransformer
-
 from lib.search_utils import (
+    DEFAULT_CHUNK_SIZE,
     DEFAULT_SEARCH_LIMIT,
     MOVIE_EMBEDDINGS_PATH,
     Movie,
     load_movies,
 )
+from numpy.typing import NDArray
+from sentence_transformers import SentenceTransformer
 
 
 class SemanticSearchResult(TypedDict):
@@ -48,7 +48,7 @@ class SemanticSearch:
         np.save(MOVIE_EMBEDDINGS_PATH, self.embeddings)
         return self.embeddings
 
-    def load_or_create_embeddings(self, documents: list[dict]):
+    def load_or_create_embeddings(self, documents: list[Movie]):
         self.documents = documents
         self.document_map = {}
         for doc in documents:
@@ -152,3 +152,24 @@ def semantic_search(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> None:
         print(f"{i}. {result['title']} (score: {result['score']:.4f})")
         print(f"   {result['description'][:100]}...")
         print()
+
+
+def fixed_size_chunking(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> list[str]:
+    words = text.split()
+    chunks = []
+
+    num_words = len(words)
+    i = 0
+    while i < num_words:
+        chunk_words = words[i : i + chunk_size]
+        chunks.append(" ".join(chunk_words))
+        i += chunk_size
+
+    return chunks
+
+
+def chunk_text(query: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> None:
+    chunks = fixed_size_chunking(query, chunk_size)
+    print(f"Chunking {len(query)} characters")
+    for i, chunk in enumerate(chunks, 1):
+        print(f"{i}. {chunk}")
