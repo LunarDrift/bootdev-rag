@@ -1,5 +1,6 @@
 import argparse
 
+from dotenv import load_dotenv
 from lib.search_utils import (
     DEFAULT_CHUNK_OVERLAP,
     DEFAULT_CHUNK_SIZE,
@@ -19,6 +20,7 @@ from lib.semantic_search import (
 
 
 def main() -> None:
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Semantic Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 

@@ -1,5 +1,6 @@
 import argparse
 
+from dotenv import load_dotenv
 from lib.keyword_search import (
     bm25_idf_command,
     bm25_tf_command,
@@ -72,6 +73,7 @@ def init_parsers(parser: argparse.ArgumentParser) -> argparse.Namespace:
 
 
 def main() -> None:
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
     args = init_parsers(parser)
     match args.command:
