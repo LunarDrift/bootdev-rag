@@ -112,8 +112,9 @@ def combine_search_results(
                 "bm25_score": 0.0,
                 "semantic_score": 0.0,
             }
-        if normalized_score > combined_scores[doc_id]["bm25_score"]:
-            combined_scores[doc_id]["bm25_score"] = normalized_score
+        combined_scores[doc_id]["bm25_score"] = max(
+            combined_scores[doc_id]["bm25_score"], normalized_score
+        )
 
     for result, normalized_score in semantic_normalized:
         doc_id = result["id"]
@@ -124,8 +125,9 @@ def combine_search_results(
                 "bm25_score": 0.0,
                 "semantic_score": 0.0,
             }
-        if normalized_score > combined_scores[doc_id]["semantic_score"]:
-            combined_scores[doc_id]["semantic_score"] = normalized_score
+        combined_scores[doc_id]["semantic_score"] = max(
+            combined_scores[doc_id]["semantic_score"], normalized_score
+        )
 
     hybrid_results: list[SearchResult] = []
     for doc_id, data in combined_scores.items():
