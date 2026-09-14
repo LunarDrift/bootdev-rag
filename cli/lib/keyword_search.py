@@ -2,7 +2,7 @@ import math
 import os
 import pickle
 import string
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
 
 from nltk.stem import PorterStemmer
 
@@ -179,8 +179,8 @@ def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     results = []
     seen = set()
 
-    for query in query_tokens:
-        matching_doc_ids = index.get_documents(query)
+    for q in query_tokens:
+        matching_doc_ids = index.get_documents(q)
         for doc_id in matching_doc_ids:
             if doc_id in seen:
                 continue
