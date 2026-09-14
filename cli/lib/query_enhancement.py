@@ -59,11 +59,35 @@ User query: "{query}"
     return rewritten if rewritten else query
 
 
+def expand_query(query: str) -> str:
+    prompt = f"""Expand the user-provided movie search query below with related terms.
+
+Add synonyms and related concepts that might appear in movie descriptions.
+Keep expansions relevant and focused.
+Output only the additional terms; they will be appended to the original query.
+
+Examples:
+- "scary bear movie" -> "scary horror grizzly bear movie terrifying film"
+- "action movie with bear" -> "action thriller bear chase fight adventure"
+- "comedy with bear" -> "comedy funny bear humor lighthearted"
+
+User query: "{query}"
+"""
+
+    response = client.chat.completions.create(
+        model=model, messages=[{"role": "user", "content": prompt}]
+    )
+    expanded = (response.choices[0].message.content or "").strip().strip('"')
+    return f"{query} {expanded}".strip()
+
+
 def enhance_query(query: str, method: str | None = None) -> str:
     match method:
         case "spell":
             return spell_correct(query)
         case "rewrite":
             return rewrite_query(query)
+        case "expand":
+            return expand_query(query)
         case _:
             return query
