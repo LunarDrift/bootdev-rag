@@ -52,6 +52,8 @@ MOVIE_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "movie_embeddings.npy")
 CHUNK_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "chunk_embeddings.npy")
 CHUNK_METADATA_PATH = os.path.join(CACHE_DIR, "chunk_metadata.json")
 
+OPENROUTER_URL = "https://openrouter.ai/api/v1"
+
 
 def load_movies() -> list[Movie]:
     with open(DATA_PATH, "r") as f:

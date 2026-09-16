@@ -5,13 +5,15 @@ from typing import Literal, NotRequired
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from sentence_transformers import CrossEncoder
 
-from .search_utils import SearchResult
+from .search_utils import OPENROUTER_URL, SearchResult
 
 
 class RerankedSearchResult(SearchResult, total=False):
     individual_score: NotRequired[int]
     batch_rank: NotRequired[int]
+    crossencoder_score: NotRequired[int]
 
 
 load_dotenv()
@@ -19,8 +21,9 @@ api_key = os.getenv("OPENROUTER_API_KEY")
 if not api_key:
     raise RuntimeError("OPENROUTER_API_KEY environment variable not set")
 
-client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+client = OpenAI(base_url=OPENROUTER_URL, api_key=api_key)
 model = "openrouter/free"
+cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
 
 
 def llm_rerank_individual(
@@ -31,18 +34,18 @@ def llm_rerank_individual(
     for doc in documents:
         prompt = f"""Rate how well this movie matches the search query.
 
-Query: "{query}"
-Movie: {doc.get("title", "")} - {doc.get("document", "")}
+        Query: "{query}"
+        Movie: {doc.get("title", "")} - {doc.get("document", "")}
 
-Consider:
-- Direct relevance to query
-- User intent (what they're looking for)
-- Content appropriateness
+        Consider:
+        - Direct relevance to query
+        - User intent (what they're looking for)
+        - Content appropriateness
 
-Rate 0-10 (10 = perfect match).
-Output ONLY the number in your response, no other text or explanation.
+        Rate 0-10 (10 = perfect match).
+        Output ONLY the number in your response, no other text or explanation.
 
-Score:"""
+        Score:"""
 
         response = client.chat.completions.create(
             model=model, messages=[{"role": "user", "content": prompt}]
@@ -111,6 +114,25 @@ def llm_rerank_batch(
     return reranked[:limit]
 
 
+def cross_encoder_rerank(
+    query: str, documents: list[SearchResult], limit: int = 5
+) -> list[RerankedSearchResult]:
+    pairs: list[list[str]] = []
+    reranked_docs: list[RerankedSearchResult] = [
+        RerankedSearchResult(**doc) for doc in documents
+    ]
+    for doc in reranked_docs:
+        pairs.append([query, f"{doc.get('title', '')} - {doc.get('document', '')}"])
+
+    scores = cross_encoder.predict(pairs)
+
+    for doc, score in zip(reranked_docs, scores):
+        doc["crossencoder_score"] = float(score)
+
+    reranked_docs.sort(key=lambda x: float(x["crossencoder_score"]), reverse=True)
+    return reranked_docs
+
+
 def rerank(
     query: str,
     documents: list[SearchResult],
@@ -121,5 +143,7 @@ def rerank(
         return llm_rerank_individual(query, documents, limit)
     if method == "batch":
         return llm_rerank_batch(query, documents, limit)
+    if method == "cross_encoder":
+        return cross_encoder_rerank(query, documents, limit)
     else:
         return documents[:limit]
