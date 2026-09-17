@@ -108,7 +108,7 @@ def main() -> None:
                 )
 
             print(
-                f"Reciprocal Rank Fusion Results for '{result['query']} (k={result['k']}):"
+                f"Reciprocal Rank Fusion Results for '{result['query']}' (k={result['k']}):"
             )
             for i, res in enumerate(result["results"], 1):
                 print(f"{i}. {res['title']}")
