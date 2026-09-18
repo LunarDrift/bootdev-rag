@@ -1,6 +1,7 @@
 import argparse
 
 from dotenv import load_dotenv
+from lib.evaluation import llm_judge_results
 from lib.hybrid_search import (
     normalize_scores,
     rrf_search_command,
@@ -9,9 +10,7 @@ from lib.hybrid_search import (
 from lib.search_utils import DEFAULT_ALPHA, DEFAULT_SEARCH_LIMIT, RRF_K
 
 
-def main() -> None:
-    load_dotenv()
-    parser = argparse.ArgumentParser(description="Hybrid Search CLI")
+def init_subparsers(parser: argparse.ArgumentParser) -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     normalize_parser = subparsers.add_parser(
@@ -62,13 +61,23 @@ def main() -> None:
         help="Re-ranking method",
     )
     rrf_parser.add_argument(
+        "--evaluate",
+        action="store_true",
+        help="Have an LLM evaluate search result relevance",
+    )
+    rrf_parser.add_argument(
         "--limit",
         type=int,
         default=DEFAULT_SEARCH_LIMIT,
         help="Number of results to return (default=5)",
     )
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+def main() -> None:
+    load_dotenv()
+    parser = argparse.ArgumentParser(description="Hybrid Search CLI")
+    args = init_subparsers(parser)
 
     match args.command:
         case "normalize":
@@ -131,6 +140,12 @@ def main() -> None:
                     print(f"   {', '.join(ranks)}")
                 print(f"   {res['document'][:100]}...")
                 print()
+
+            if args.evaluate:
+                print("LLM Evaluation (0-3 relevance scale):")
+                llm_scores = llm_judge_results(args.query, result["results"])
+                for i, (res, score) in enumerate(zip(result["results"], llm_scores), 1):
+                    print(f"{i}. {res['title']}: {score}/3")
 
         case _:
             parser.print_help()

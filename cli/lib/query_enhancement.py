@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from lib.search_utils import OPENROUTER_URL
+from lib.search_utils import OPENROUTER_MODEL, OPENROUTER_URL
 from openai import OpenAI
 
 load_dotenv()
@@ -13,7 +13,6 @@ client = OpenAI(
     base_url=OPENROUTER_URL,
     api_key=api_key,
 )
-model = "openrouter/free"
 
 
 def spell_correct(query: str) -> str:
@@ -26,7 +25,7 @@ def spell_correct(query: str) -> str:
     """
 
     response = client.chat.completions.create(
-        model=model, messages=[{"role": "user", "content": prompt}]
+        model=OPENROUTER_MODEL, messages=[{"role": "user", "content": prompt}]
     )
     corrected = (response.choices[0].message.content or "").strip().strip('"')
     return corrected if corrected else query
@@ -54,7 +53,7 @@ def rewrite_query(query: str) -> str:
     """
 
     response = client.chat.completions.create(
-        model=model, messages=[{"role": "user", "content": prompt}]
+        model=OPENROUTER_MODEL, messages=[{"role": "user", "content": prompt}]
     )
     rewritten = (response.choices[0].message.content or "").strip().strip('"')
     return rewritten if rewritten else query
@@ -76,7 +75,7 @@ def expand_query(query: str) -> str:
     """
 
     response = client.chat.completions.create(
-        model=model, messages=[{"role": "user", "content": prompt}]
+        model=OPENROUTER_MODEL, messages=[{"role": "user", "content": prompt}]
     )
     expanded = (response.choices[0].message.content or "").strip().strip('"')
     return f"{query} {expanded}".strip()

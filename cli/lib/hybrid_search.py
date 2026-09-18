@@ -261,17 +261,25 @@ def rrf_search_command(
     search = HybridSearch(movies)
 
     original_query = query
+    # print(f"[DEBUG] Original Query: {original_query}")
     enhanced_query = None
     if enhance:
         enhanced_query = enhance_query(query, method=enhance)
+        # print(f"[DEBUG] Enhanced Query: {enhanced_query}")
         query = enhanced_query
 
     search_limit = limit * SEARCH_MULTIPLIER if rerank_method else limit
     results = search.rrf_search(query, k, search_limit)
+    # print("[DEBUG] Results after RRF Search:")
+    # for i, r in enumerate(results, 1):
+    #     print(f"  {i}. {r['title']}")
 
     reranked = False
     if rerank_method:
         results = rerank(query, results, method=rerank_method, limit=limit)
+        # print("[DEBUG] Results after re-ranking:")
+        # for i, r in enumerate(results, 1):
+        #     print(f"  {i}. {r['title']} (score={r['score']:.4f})")
         reranked = True
 
     return {
