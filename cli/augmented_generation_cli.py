@@ -1,6 +1,11 @@
 import argparse
 
-from lib.augmented_generation import citations_command, rag_command, summarize_command
+from lib.augmented_generation import (
+    citations_command,
+    question_command,
+    rag_command,
+    summarize_command,
+)
 
 
 def main() -> None:
@@ -28,6 +33,17 @@ def main() -> None:
     )
     citations_parser.add_argument("query", type=str, help="Search query")
     citations_parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Max number of documents to use (default=5)",
+    )
+
+    question_parser = subparsers.add_parser(
+        "question", help="Conversational question-answering"
+    )
+    question_parser.add_argument("query", type=str, help="Search query")
+    question_parser.add_argument(
         "--limit",
         type=int,
         default=5,
@@ -62,6 +78,15 @@ def main() -> None:
                 print(f"  - {document['title']}")
             print()
             print("LLM Answer:")
+            print(result["answer"])
+
+        case "question":
+            result = question_command(args.query)
+            print("Search Results:")
+            for document in result["search_results"]:
+                print(f"  - {document['title']}")
+            print()
+            print("Answer:")
             print(result["answer"])
 
         case _:

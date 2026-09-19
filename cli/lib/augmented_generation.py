@@ -164,6 +164,54 @@ def cite_sources(query: str, limit: int = 5):
     }
 
 
+def generate_conversational_answer(
+    search_results: list[Movie], query: str, limit: int = 5
+) -> str:
+    doc_text = ""
+    for i, result in enumerate(search_results[:limit], 1):
+        doc_text += f"Document {i}: {result['title']}; {result['document']}\n\n"
+
+    prompt = f"""Answer the user's question based on the provided movies that are available on Webflyx, a streaming service.
+
+    Question: {query}
+
+    Documents:
+    {doc_text}
+
+    Instructions:
+    - Answer questions directly and concisely
+    - Be casual and conversational
+    - Don't be cringe or hype-y
+    - Talk like a normal person would in a chat conversation
+
+    Answer:"""
+
+    response = client.chat.completions.create(
+        model=OPENROUTER_MODEL, messages=[{"role": "user", "content": prompt}]
+    )
+    return (response.choices[0].message.content or "").strip()
+
+
+def conversational_answer(query: str, limit: int = 5):
+    movies = load_movies()
+    hybrid_search = HybridSearch(movies)
+
+    search_results = hybrid_search.rrf_search(query, k=RRF_K, limit=limit)
+    if not search_results:
+        return {
+            "query": query,
+            "search_results": [],
+            "error": "No results found",
+        }
+
+    result = generate_conversational_answer(search_results, query, limit)
+    return {
+        "query": query,
+        "answer": result,
+        "search_results": search_results,
+    }
+
+
 def rag_command(query: str):
     return rag(query)
 
@@ -174,3 +222,7 @@ def summarize_command(query: str):
 
 def citations_command(query: str):
     return cite_sources(query)
+
+
+def question_command(query: str):
+    return conversational_answer(query)
