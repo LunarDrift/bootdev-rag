@@ -44,6 +44,31 @@ def generate_answer(search_results: list[Movie], query: str, limit: int = 5) -> 
     return (response.choices[0].message.content or "").strip()
 
 
+def generate_summary(search_results: list[Movie], query: str, limit: int = 5) -> str:
+    doc_text = ""
+    for i, result in enumerate(search_results[:limit], 1):
+        doc_text += f"Document {i}: {result['title']}; {result['document']}\n\n"
+
+    prompt = f"""Provide information useful to the query below by synthesizing data from multiple search results in detail.
+
+    The goal is to provide comprehensive information so that users know what their options are.
+    Your response should be information-dense and concise, with several key pieces of information about the genre, plot, etc. of each movie.
+
+    This should be tailored to Webflyx users. Webflyx is a movie streaming service.
+
+    Query: {query}
+
+    Search results:
+    {doc_text}
+
+    Provide a comprehensive 3–4 sentence answer that combines information from multiple sources:"""
+
+    response = client.chat.completions.create(
+        model=OPENROUTER_MODEL, messages=[{"role": "user", "content": prompt}]
+    )
+    return (response.choices[0].message.content or "").strip()
+
+
 def rag(query: str, limit: int = DEFAULT_SEARCH_LIMIT):
     movies = load_movies()
     hybrid_search = HybridSearch(movies)
@@ -67,5 +92,29 @@ def rag(query: str, limit: int = DEFAULT_SEARCH_LIMIT):
     }
 
 
+def summarize(query: str, limit: int = DEFAULT_SEARCH_LIMIT):
+    movies = load_movies()
+    hybrid_search = HybridSearch(movies)
+
+    search_results = hybrid_search.rrf_search(query, k=RRF_K, limit=limit)
+    if not search_results:
+        return {
+            "query": query,
+            "search_results": [],
+            "error": "No results found",
+        }
+
+    summary = generate_summary(search_results, query, limit)
+    return {
+        "query": query,
+        "summary": summary,
+        "search_results": search_results[:limit],
+    }
+
+
 def rag_command(query: str):
     return rag(query)
+
+
+def summarize_command(query: str):
+    return summarize(query)
